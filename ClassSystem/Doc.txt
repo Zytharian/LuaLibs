@@ -1,0 +1,152 @@
+Project: Lua Class System
+Abbreviation: LuaCS
+Author: Zytharian
+Version 4
+Created: April 11, 2012
+Updated: December 16, 2013
+
+//--Lua CS--\\
+This library allows for a way to use Lua's OOP facilities in a project. The library
+primarily uses two functions, 'new' and 'class'. The 'new' function is used to
+create an instance of a class while the 'class' function is used to define one.
+
+//--Setup--\\
+To use this library, require it via something such as
+	LuaCS = require("ClassSystem.lua")
+
+In further examples, "LuaCS.whatever" will be omitted.
+
+//--Classes--\\
+
+--Defining a class--
+Classes are defined by calling the class function. For example,
+this defines the class 'Test'
+
+	class "Test" (function (this) end)
+
+Where the function passed is called only ONCE to define the class'a members.
+In addition, the class function can also be called with two 'options' being
+'extends' and 'abstract'.
+
+	class "ClassName" : extends "otherClass" : abstract() (function ( this ) end)
+
+Abstract:
+	Making the class abstract means that you cannot create an instance of it,
+only extend it with another class.
+
+Extends:
+	Extending a class allows one to override any functions or members inherited
+from an already existing class. During instantiation, the base class constructors
+are called before the super class constructors. All with the same arguments.
+
+Class definition function:
+
+All member functions should be created with the method syntax
+that is: 'function this:MethodName (args)'. This is so they can make
+use of the 'self' keyword to refer to the class instance rather than
+explicitly adding it as the first argument.
+
+The constructor (which is called when the class is created via 'new')
+is named 'init' and is created in the definition function as such:
+	function this:init (ClassName[, arg1, ...]) end
+
+Members are created by adding a value or function to the 'this.members' table.
+Methods, for example, can be created as such:
+	function this.member:MethodName (args) end
+
+All members are, by default, private. To allow them to be accessed or set,
+you must modify the 'this.get' and 'this.set' tables respectively. For exmaple,
+to set a property AValue to be accessible and freely settable (no type checking),
+use the following:
+	this.get.AValue = true
+	this.set.AValue = true
+
+However, if you want to change the behavior, instead of making this.get.AValue true,
+you can set it to a function to change behavior. For the two tables respectively:
+	function this.get:AValue (MemberName) end
+	function this.set:AValue (MemberName, NewValue) end
+
+In this was we can have readonly members of the class as well as settables that
+can be typechecked.
+
+Note that using the 'self' variable in methods bypasses these get/set restrictions.
+
+The metatable can also be modified to add operator support via 'this.meta'
+However, you may not override the __mode, __index, __newindex, or __metatable metamethods.
+
+
+--Instancing a class--
+
+	new "ClassName" (args ...)
+
+This function creates and returns the class with the specified ClassName.
+The arguments are passed to all of the constructors throughout the heritance tree.
+(In the order of Base -> Base2 inheriting Base -> YourClass inheriting Base2)
+
+The type of a class is an empty table that acts like a proxy and is governed
+by a metatable.
+
+When calling methods, you can use either the '.' operator or the ':' operator.
+NOTE: You cannot compare member functions. |someClass.Func == someClass.Func|
+will return false.
+
+
+//--The LuaCS API--\\
+The following functions are defined in LuaCS table returned by require().
+
+table new(string ClassName)(args ...)
+	Instances a new class.
+
+table class(string ClassName)
+	Returns a table to finish defining a class.
+	The table has the methods table `extends(string ClassName)` and
+	`table structural()` with the `__call` metamethod overridden as
+	`__call(function classDefinition)` to finish construction.
+
+bool ClassExists(string ClassName)
+	Returns true if the class has been defined, otherwise false.
+
+table classAncestry( string ClassName )
+	Returns a table having keys t[1] be the base class and t[n] be the class itself.
+	The table values are strings of the class name.
+
+//--Standard Classes--\\
+
+Signal:
+	class::Connection Connect( function Handler( ... ) )
+	nil Fire( ... )
+	nil DisconnectAll()
+
+Connection:
+	init(function DisconnectFunction)
+		Notes: DisconnectFunction(true) should disconnect the connection where
+			DisconnectFunction(false) should return a boolean whether the connection
+			is connected or not.
+
+	nil Disconnect()
+	readonly bool Connected
+
+	Notes: Should only be created by signal class
+
+Enum:
+	init(table Data)
+		'Data' should consist of strings representing the name of each EnumItem.
+
+	table GetEnumItems()
+	class::EnumItem GetItem( string ItemName OR number ItemId )
+
+EnumItem:
+	init(string Name, number Id)
+
+	readonly string Name
+	readonly number Id
+
+	Notes: Should only be created by an Enum class
+	
+abstract Instance:
+	
+	bool IsA(string Class)
+	readonly string ClassName
+	
+	Notes: Superclasses should change the ClassName string during definition.
+		Intended to be extended by other classes.
